@@ -1,0 +1,1 @@
+This is my smart india hackathon 2025 project, this is the backend of an app which is called gurukul manager it monitors the attendance of students and marks the attendance with the help of qr codes.It also creates a dashboard where the students can store their information like their test scores,attendance %,assginemnts etc.
