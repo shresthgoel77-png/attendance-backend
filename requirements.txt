@@ -1,4 +1,5 @@
-sflask
+flask
 flask-cors
 firebase-admin
 python-dotenv
+gunicorn

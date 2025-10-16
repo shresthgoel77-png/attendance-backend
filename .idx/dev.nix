@@ -6,54 +6,32 @@
 
   # Use https://search.nixos.org/packages to find packages
   packages = [
-    # pkgs.go
-    pkgs.python311
-    pkgs.python311Packages.pip
-    pkgs.python311Packages.flask
-    pkgs.python311Packages.flask-cors
-    pkgs.python311Packages.firebase-admin
-    pkgs.python311Packages.python-dotenv
-    # pkgs.nodejs_20
-    # pkgs.nodePackages.nodemon
+    (pkgs.python3.withPackages (ps: [
+      ps.flask
+      ps.flask-cors
+      ps.python-dotenv
+      ps.pip
+    ]))
   ];
 
   # Sets environment variables in the workspace
   env = {};
   idx = {
     # Search for the extensions you want on https://open-vsx.org/ and use "publisher.id"
-    extensions = [
-      # "vscodevim.vim"
-    ];
+    extensions = [];
 
     # Enable previews
     previews = {
       enable = true;
-      previews = {
-        # web = {
-        #   # Example: run "npm run dev" with PORT set to IDX's defined port for previews,
-        #   # and show it in IDX's web preview panel
-        #   command = ["npm" "run" "dev"];
-        #   manager = "web";
-        #   env = {
-        #     # Environment variables to set for your server
-        #     PORT = "$PORT";
-        #   };
-        # };
-      };
+      previews = {};
     };
 
     # Workspace lifecycle hooks
     workspace = {
       # Runs when a workspace is first created
-      onCreate = {
-        # Example: install JS dependencies from NPM
-        # npm-install = "npm install";
-      };
-      # Runs when the workspace is (re)started
-      onStart = {
-        # Example: start a background task to watch and re-build backend code
-        # watch-backend = "npm run watch-backend";
-      };
+      onCreate = {};
+      # Runs when the workspace is (re)started)
+      onStart = {};
     };
   };
 }
