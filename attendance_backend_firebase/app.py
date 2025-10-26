@@ -1,105 +1,100 @@
 
 import os
-from flask import Flask, jsonify, request
+import qrcode
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import firebase_admin
-from firebase_admin import credentials, firestore, auth, storage
+from firebase_admin import credentials, firestore
 from dotenv import load_dotenv
+import io
 
 # Load environment variables from .env file
 load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app)
 
-# --- Firebase Initialization ---
-try:
-    cred_path = os.environ.get("FIREBASE_CREDENTIAL_PATH")
-    if not cred_path:
-        raise ValueError("FIREBASE_CREDENTIAL_PATH environment variable not set.")
+# Initialize Firebase
+cred = credentials.Certificate(os.getenv("FIREBASE_ADMIN_SDK_JSON"))
+firebase_admin.initialize_app(cred)
+db = firestore.client()
 
-    # Check if the file exists before creating credentials
-    if not os.path.exists(cred_path):
-         raise FileNotFoundError(f"Service account key file not found at: {cred_path}")
+@app.route('/generate_qr', methods=['GET'])
+def generate_qr():
+    """
+    Generates a QR code for a given course ID.
+    Expects 'course_id' as a query parameter.
+    """
+    try:
+        course_id = request.args.get('course_id')
+        if not course_id:
+            return jsonify({"success": False, "error": "course_id is required"}), 400
 
-    cred = credentials.Certificate(cred_path)
-    firebase_admin.initialize_app(cred, {
-        '''storageBucket':''' # Add your storage bucket name here if you use Storage
-    })
-    db = firestore.client()
-    print("Firebase Admin SDK initialized successfully.")
+        # Generate QR code
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(course_id)
+        qr.make(fit=True)
 
-except (ValueError, FileNotFoundError) as e:
-    print(f"Error initializing Firebase Admin SDK: {e}")
-    print("Backend is running without Firebase connection. Some features may not work.")
-    db = None # Set db to None if initialization fails
+        img = qr.make_image(fill_color="black", back_color="white")
 
+        # Save the image to a in-memory file
+        img_io = io.BytesIO()
+        img.save(img_io, 'PNG')
+        img_io.seek(0)
 
-# --- Routes ---
+        return send_file(img_io, mimetype='image/png')
 
-@app.route("/ping", methods=['GET'])
-def ping():
-    """A simple test route to confirm the server is running."""
-    return jsonify({"message": "pong!"}), 200
+    except Exception as e:
+        app.logger.error(f"Error generating QR code: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route("/attendance", methods=['POST'])
+@app.route('/mark_attendance', methods=['POST'])
 def mark_attendance():
     """
-    A placeholder route to demonstrate marking attendance.
-    Expects a JSON payload with 'studentId' and 'status'.
+    Marks attendance for a student.
+    Expects a JSON payload with 'student_id' and 'course_id'.
     """
-    if not db:
-        return jsonify({"error": "Firestore is not connected."}), 500
-
     try:
         data = request.get_json()
-        student_id = data.get('studentId')
-        status = data.get('status')
+        student_id = data['student_id']
+        course_id = data['course_id']
 
-        if not student_id or not status:
-            return jsonify({"error": "Missing studentId or status in request."}), 400
-
-        # Add attendance record to Firestore
-        attendance_ref = db.collection('attendance').document()
-        attendance_ref.set({
-            'studentId': student_id,
-            'status': status,
+        # Create a new attendance record
+        attendance_ref, _ = db.collection('attendance').add({
+            'student_id': student_id,
+            'course_id': course_id,
             'timestamp': firestore.SERVER_TIMESTAMP
         })
 
-        return jsonify({"message": "Attendance marked successfully.", "doc_id": attendance_ref.id}), 201
-
+        return jsonify({"success": True, "attendance_id": attendance_ref.id}), 201
     except Exception as e:
-        print(f"Error in /attendance route: {e}")
-        return jsonify({"error": "An internal server error occurred."}), 500
+        app.logger.error(f"Error marking attendance: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
-
-@app.route("/attendance/<student_id>", methods=['GET'])
-def get_attendance(student_id):
+@app.route('/get_attendance', methods=['GET'])
+def get_attendance():
     """
-    A placeholder route to retrieve attendance for a specific student.
+    Retrieves attendance records for a student.
+    Expects 'student_id' as a query parameter.
     """
-    if not db:
-        return jsonify({"error": "Firestore is not connected."}), 500
-
     try:
-        # Query Firestore for attendance records
-        attendance_query = db.collection('attendance').where('studentId', '==', student_id).stream()
+        student_id = request.args.get('student_id')
+        if not student_id:
+            return jsonify({"success": False, "error": "student_id is required"}), 400
 
-        records = []
-        for record in attendance_query:
-            records.append(record.to_dict())
+        attendance_query = db.collection('attendance').where('student_id', '==', student_id).stream()
+        attendance_records = [record.to_dict() for record in attendance_query]
 
-        return jsonify({"studentId": student_id, "attendance": records}), 200
-
+        return jsonify({"success": True, "attendance": attendance_records}), 200
     except Exception as e:
-        print(f"Error in /attendance/<student_id> route: {e}")
-        return jsonify({"error": "An internal server error occurred."}), 500
+        app.logger.error(f"Error getting attendance: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
-
-# --- Main Execution ---
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))

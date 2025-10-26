@@ -1,65 +1,37 @@
-# Backend for Automated Attendance System
+# Attendance Backend
 
-This directory contains the Python backend for the Automated Attendance System. It uses Flask to create a web server and connects to Firebase for database and authentication services.
+This is the backend for the Automated Attendance System, built with Flask.
 
-## Setup and Installation
+## Setup
 
-### 1. Install Dependencies
+1.  **Install dependencies:**
 
-Install all the necessary Python packages using pip:
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-```bash
-pip install -r requirements.txt
-```
+2.  **Create a `.env` file** and add the following:
 
-### 2. Configure Firebase
+    ```
+    FIREBASE_ADMIN_SDK_JSON=<path to your serviceAccountKey.json>
+    ```
 
-1.  **Download your Firebase service account key:**
-    *   Go to your Firebase project console.
-    *   Navigate to **Project settings** > **Service accounts**.
-    *   Click on **Generate new private key** and download the JSON file.
+3.  **Run the server:**
 
-2.  **Save the key:**
-    *   Rename the downloaded file to `serviceAccountKey.json`.
-    *   Place it in the `attendance-backend` directory (the same directory as this README).
+    ```bash
+    python app.py
+    ```
 
-### 3. Set Environment Variables
+## API Endpoints
 
-Create a `.env` file in the `attendance-backend` directory by copying the example file:
+*   `POST /mark_attendance`
 
-```bash
-cp .env.example .env
-```
+    *   Marks attendance for a student.
+    *   **Request Body:** `{"student_id": "<student_id>", "course_id": "<course_id>"}`
+    *   **Response:** `{"success": true, "attendance_id": "<attendance_id>"}`
 
-The `.env` file should contain the following:
+*   `GET /get_attendance`
 
-```
-FIREBASE_CREDENTIAL_PATH=serviceAccountKey.json
-PORT=5000
-```
-
-## Running the Server
-
-Once you have completed the setup, you can run the backend server:
-
-```bash
-python attendance-backend/attendance_backend_firebase/app.py
-```
-
-You should see a message indicating that the server is running on port 5000 and whether the Firebase Admin SDK was initialized successfully.
-
-### Verify Server Startup
-
-To confirm that the server is running, you can send a GET request to the `/ping` endpoint:
-
-```bash
-curl http://localhost:5000/ping
-```
-
-You should receive the following response:
-
-```json
-{
-  "message": "pong!"
-}
-```
+    *   Retrieves attendance records for a student.
+    *   **Query Parameters:** `student_id=<student_id>`
+    *   **Response:** `{"success": true, "attendance": [...]}`
