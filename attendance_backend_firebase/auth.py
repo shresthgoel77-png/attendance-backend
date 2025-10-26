@@ -13,6 +13,3 @@ def register():
   return jsonify({"uid": user.uid, "email": user.email, "name": user.display_name})
  except Exception as e:
   return jsonify({"error": str(e)}), 400
-@auth_bp.route("/login", methods=["POST"])
-def login():
- return jsonify({"message": "Login handled by Firebase Authentication in Flutter."})
